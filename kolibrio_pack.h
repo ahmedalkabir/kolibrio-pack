@@ -19,6 +19,7 @@
 #define TYPE_FLOAT   0x40
 #define TYPE_STRING  0x80
 #define TYPE_BYTES   0xA0
+#define TYPE_INTEGER 0xC0
 
 #if defined __cplusplus
 extern "C"
@@ -28,12 +29,19 @@ extern "C"
     typedef struct
     {
         // public
+        // the holder buffer
         uint8_t *buffer;
+        // length of the packet in binary 
+        // how much bytes can hold
         uint8_t length_of_buffer;
+        // length of the packet 
         uint8_t length;
 
         // private
+        // internal cursor for tracking 
+        // bytes in the packet
         uint8_t _cursor;
+        // internal index of the packet
         uint8_t _index;
     } kolibrio_pack_t;
 
@@ -48,11 +56,17 @@ extern "C"
 
     void writeBoolean(kolibrio_pack_t *packet, bool value);
 
+    void writeString(kolibrio_pack_t *packet, const char *value);
+    
+    int getInteger(kolibrio_pack_t *packet, uint8_t index);
+
     float getFloat(kolibrio_pack_t *packet, uint8_t index);
 
     bool getBoolean(kolibrio_pack_t *packet, uint8_t index);
-    // private functions
 
+    char *getString(kolibrio_pack_t *packet, uint8_t index);
+    // private functions
+    uint8_t _increase_cursor_by_type(uint8_t cursor, kolibrio_pack_t *packet); 
 #if defined __cplusplus
 }
 #endif
