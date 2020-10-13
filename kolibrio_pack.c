@@ -35,7 +35,7 @@ void init_a_packet(kolibrio_pack_t *packet, uint8_t length, uint8_t *buffer, uin
     // setup the length of the packet
     // or let's say how many value the packet
     // can hold
-    packet->buffer[packet->_cursor++] = length;
+    packet->buffer[packet->_cursor++] = 0;
 }
 
 void deserialize_a_packet(kolibrio_pack_t *packet, uint8_t *buffer)
@@ -45,6 +45,16 @@ void deserialize_a_packet(kolibrio_pack_t *packet, uint8_t *buffer)
 
     packet->_cursor = 0;
     packet->_index = 0;
+
+    // index of pointer array
+    uint8_t index_array = 0;
+    uint8_t cursor = 1;
+    for (uint8_t i = 0; i < packet->length; i++)
+    {
+        packet->array_of_addresses[index_array++] = ((size_t *)&(packet->buffer[cursor]));
+
+        cursor += _increase_cursor_by_type(cursor, packet);
+    }
 }
 
 void writeInteger(kolibrio_pack_t *packet, int value)
@@ -56,6 +66,7 @@ void writeInteger(kolibrio_pack_t *packet, int value)
         packet->buffer[packet->_cursor++] = (value >> 0) & 0xff;
 
         packet->_index++;
+        packet->buffer[0] += 1;
     }
 }
 
@@ -71,6 +82,7 @@ void writeFloat(kolibrio_pack_t *packet, float value)
         packet->buffer[packet->_cursor++] = (*(uint32_t *)(&value) >> 0) & 0xFF;
 
         packet->_index++;
+        packet->buffer[0] += 1;
     }
 }
 
@@ -82,6 +94,7 @@ void writeBoolean(kolibrio_pack_t *packet, bool value)
         packet->buffer[packet->_cursor++] = value ? 1 : 0;
 
         packet->_index++;
+        packet->buffer[0] += 1;
     }
 }
 
@@ -105,6 +118,7 @@ void writeString(kolibrio_pack_t *packet, const char *value)
         packet->buffer[packet->_cursor++] = '\0';
 
         packet->_index++;
+        packet->buffer[0] += 1;
     }
 }
 
@@ -144,6 +158,56 @@ float getFloat(kolibrio_pack_t *packet, uint8_t index)
     // we'll ignore the first byte
     // because it contains the length of
     // the packet
+    // uint8_t cursor = 1;
+
+    // for (uint8_t i = 0; i < packet->length; i++)
+    // {
+    //     if (packet->buffer[cursor] == TYPE_FLOAT)
+    //     {
+    //         if (i == index)
+    //         {
+    //             // ignore the type of the value
+    //             cursor += 1;
+
+    //             uint32_t float_bytes = (uint32_t)packet->buffer[cursor++] << 24 |
+    //                                    (uint32_t)packet->buffer[cursor++] << 16 |
+    //                                    (uint32_t)packet->buffer[cursor++] << 8 |
+    //                                    (uint32_t)packet->buffer[cursor++] << 0;
+    //             return *(float *)&float_bytes;
+    //         }
+    //         else
+    //         {
+    //             cursor += _increase_cursor_by_type(cursor, packet);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         cursor += _increase_cursor_by_type(cursor, packet);
+    //     }
+    // }
+
+    if (*(uint8_t *)packet->array_of_addresses[index] == TYPE_FLOAT)
+    {
+        uint8_t *pointer_to_float = (uint8_t *)packet->array_of_addresses[index] + 1;
+
+        uint32_t float_bytes = (uint32_t)(*((uint8_t *)pointer_to_float + 0)) << 24 |
+                               (uint32_t)(*((uint8_t *)pointer_to_float + 1)) << 16 |
+                               (uint32_t)(*((uint8_t *)pointer_to_float + 2)) << 8 |
+                               (uint32_t)(*((uint8_t *)pointer_to_float + 3)) << 0;
+
+        return *(float *)&float_bytes;
+    }
+    else
+    {
+        return 0.0;
+    }
+}
+
+float getFloat_old(kolibrio_pack_t *packet, uint8_t index)
+{
+    // we'll ignore the first byte
+    // because it contains the length of
+    // the packet
     uint8_t cursor = 1;
 
     for (uint8_t i = 0; i < packet->length; i++)
@@ -171,6 +235,22 @@ float getFloat(kolibrio_pack_t *packet, uint8_t index)
             cursor += _increase_cursor_by_type(cursor, packet);
         }
     }
+
+    // if (*(uint8_t *)packet->array_of_addresses[index] == TYPE_FLOAT)
+    // {
+    //     uint8_t *pointer_to_float = (uint8_t *)packet->array_of_addresses[index] + 1;
+
+    //     uint32_t float_bytes = (uint32_t)(*((uint8_t *)pointer_to_float + 0)) << 24 |
+    //                            (uint32_t)(*((uint8_t *)pointer_to_float + 1)) << 16 |
+    //                            (uint32_t)(*((uint8_t *)pointer_to_float + 2)) << 8 |
+    //                            (uint32_t)(*((uint8_t *)pointer_to_float + 3)) << 0;
+
+    //     return *(float *)&float_bytes;
+    // }
+    // else
+    // {
+    //     return 0.0;
+    // }
 }
 
 bool getBoolean(kolibrio_pack_t *packet, uint8_t index)
@@ -202,23 +282,32 @@ char *getString(kolibrio_pack_t *packet, uint8_t index)
 {
     uint8_t cursor = 1;
 
-    for (uint8_t i = 0; i < packet->length; i++)
+    // for (uint8_t i = 0; i < packet->length; i++)
+    // {
+    //     if (packet->buffer[cursor] == TYPE_STRING)
+    //     {
+    //         if (i == index)
+    //         {
+    //             cursor += 2;
+    //             return &(packet->buffer[cursor]);
+    //         }
+    //         else
+    //         {
+    //             cursor += _increase_cursor_by_type(cursor, packet);
+    //         }
+    //     }
+    //     else
+    //     {
+    //         cursor += _increase_cursor_by_type(cursor, packet);
+    //     }
+    // }
+    if (*(uint8_t *)packet->array_of_addresses[index] == TYPE_STRING)
     {
-        if (packet->buffer[cursor] == TYPE_STRING)
-        {
-            if (i == index)
-            {
-                cursor += 2;
-                return &(packet->buffer[cursor]);
-            }
-            else
-            {
-                cursor += _increase_cursor_by_type(cursor, packet);
-            }
-        }
-        else
-        {
-            cursor += _increase_cursor_by_type(cursor, packet);
-        }
+        uint8_t *pointer_to_string = (uint8_t *)packet->array_of_addresses[index] + 2;
+        return ((char *)pointer_to_string);
+    }
+    else
+    {
+        return NULL;
     }
 }
